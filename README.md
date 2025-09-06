@@ -2,6 +2,15 @@
 
 Note that the first bot run will need to install dependencies and download model weights. This may take 30s or so.
 
+Set up environment variables in an .env file.
+
+```bash
+cp env.example .env
+# put in your API key(s)
+```
+
+Start the bot. Then send an audio file. `send-audio-file.py` accepts a `--file` argument, which defaults to `test.m4a`.
+
 ```python
 # in terminal 1
 uv run bot.py
