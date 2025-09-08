@@ -20,7 +20,7 @@ uv add --editable "../../pipecat[webrtc,deepgram,speechmatics,silero,runner]"
 
 Start the bot. Then send an audio file. `send-audio-file.py` accepts a `--file` argument, which defaults to `test.m4a`.
 
-```python
+```bash
 # in terminal 1
 uv run bot.py
 
