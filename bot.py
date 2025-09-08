@@ -30,6 +30,7 @@ from pipecat.processors.frameworks.rtvi import (
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
 from pipecat.services.assemblyai.stt import AssemblyAISTTService
+from pipecat.services.cartesia.stt import CartesiaSTTService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.speechmatics.stt import (
     EndOfUtteranceMode,
@@ -173,7 +174,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             params=SpeechmaticsSTTService.InputParams(
                 max_delay=4.0,
                 end_of_utterance_silence_trigger=0.5,
-                end_of_utterance_mode=EndOfUtteranceMode.FIXED,
+                end_of_utterance_mode=EndOfUtteranceMode.ADAPTIVE,
                 operating_point=OperatingPoint.ENHANCED,
             ),
         )
@@ -184,6 +185,10 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
         stt_assemblyai = AssemblyAISTTService(
             api_key=os.getenv("ASSEMBLYAI_API_KEY"),
+        )
+
+        stt_cartesia = CartesiaSTTService(
+            api_key=os.getenv("CARTESIA_API_KEY"),
         )
 
         audio_logger = AudioLogger()
@@ -224,6 +229,16 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                                 stt_assemblyai,
                                 TranscriptionMetricsLogger(
                                     rtvi, transport._params.vad_analyzer, "🧤", "stt_assemblyai"
+                                ),
+                            ]
+                        )
+                    ],
+                    [
+                        Pipeline(
+                            [
+                                stt_cartesia,
+                                TranscriptionMetricsLogger(
+                                    rtvi, transport._params.vad_analyzer, "🐸", "stt_cartesia"
                                 ),
                             ]
                         )

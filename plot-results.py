@@ -250,7 +250,7 @@ def plot_audio_with_stt_providers(
                 # Use green for speaking start, orange for speaking stop
                 color = "green" if is_speaking else "orange"
                 label = None
-                
+
                 # Add labels for legend (only once per type)
                 if is_speaking and not speaking_start_plotted:
                     label = "Speaking Start"
@@ -258,23 +258,24 @@ def plot_audio_with_stt_providers(
                 elif not is_speaking and not speaking_stop_plotted:
                     label = "Speaking Stop"
                     speaking_stop_plotted = True
-                
+
                 ax_main.axvline(x=time_offset, color=color, alpha=0.8, linewidth=1.5, label=label)
-    
+
     # Add legend to main chart including VAD shading
     if speaking_events:
         from matplotlib.patches import Patch
+
         legend_elements = []
-        
+
         # Add VAD shading patch
-        vad_patch = Patch(color='lightblue', alpha=0.2, label='VAD Speaking Periods')
+        vad_patch = Patch(color="lightblue", alpha=0.2, label="VAD Speaking Periods")
         legend_elements.append(vad_patch)
-        
+
         # Add existing line elements
         handles, labels = ax_main.get_legend_handles_labels()
         legend_elements.extend(handles)
-        
-        ax_main.legend(handles=legend_elements, loc='upper right', fontsize=9)
+
+        ax_main.legend(handles=legend_elements, loc="upper right", fontsize=9)
 
     # Create subplot for each STT provider
     for i, (provider_name, (stt_timestamps, is_final_flags)) in enumerate(stt_data.items()):
@@ -291,9 +292,9 @@ def plot_audio_with_stt_providers(
         ax.set_xlim(0, duration_seconds)
         ax.set_ylim(-0.5, 0.5)  # Slightly larger than audio range for visibility
 
-        # Remove 'stt_' prefix from display name
-        display_name = provider_name.replace("stt_", "").title()
-        ax.set_ylabel(f"{display_name}\nTranscripts")
+        # Remove 'stt_' prefix from display name and make uppercase
+        display_name = provider_name.replace("stt_", "").upper()
+        ax.set_ylabel(display_name)
         ax.set_yticklabels([])  # Remove y-axis tick labels
 
         # Set custom grid: vertical lines every second, labels every 5 seconds
@@ -315,7 +316,7 @@ def plot_audio_with_stt_providers(
                     # Use purple for final transcripts, red for interim
                     color = "purple" if is_final else "red"
                     label = None
-                    
+
                     # Add labels for legend (only once per type)
                     if is_final and not final_plotted:
                         label = "Final Transcript"
@@ -323,12 +324,12 @@ def plot_audio_with_stt_providers(
                     elif not is_final and not interim_plotted:
                         label = "Interim Transcript"
                         interim_plotted = True
-                    
+
                     ax.axvline(x=time_offset, color=color, alpha=0.7, linewidth=2, label=label)
-        
+
         # Add legend to STT provider chart
         if stt_timestamps:
-            ax.legend(loc='upper right', fontsize=8)
+            ax.legend(loc="upper right", fontsize=8)
 
     # Set x-label only on the bottom subplot
     axes[-1].set_xlabel("Time (seconds)")
