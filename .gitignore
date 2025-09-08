@@ -2,6 +2,7 @@
 .venv
 logs
 output
+html
 *.egg-info
 uv.lock
 *.pkf

@@ -337,9 +337,8 @@ def plot_audio_with_stt_providers(
     plt.tight_layout()
 
     # Save the plot
-    plot_filename = f"audio_plot_{output_folder.replace('/', '_')}.png"
-    plt.savefig(plot_filename, dpi=300, bbox_inches="tight")
-    print(f"Plot saved as: {plot_filename}")
+    plt.savefig(args.output, dpi=300, bbox_inches="tight")
+    print(f"Plot saved as: {args.output}")
 
     # Show the plot
     plt.show()
@@ -350,6 +349,12 @@ def main():
     parser.add_argument("folder", help="Folder containing audio.jsonl file (e.g., output/test)")
     parser.add_argument(
         "--sample-rate", type=int, default=16000, help="Audio sample rate (default: 16000)"
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default="test-result.png",
+        help="Output filename (default: test-result.png)",
     )
 
     args = parser.parse_args()
@@ -405,7 +410,13 @@ def main():
 
         # Plot waveform with all STT providers and speaking events
         plot_audio_with_stt_providers(
-            timestamps, audio_samples, args.folder, stt_data, speaking_events, args.sample_rate
+            timestamps,
+            audio_samples,
+            args.folder,
+            stt_data,
+            speaking_events,
+            args.sample_rate,
+            args,
         )
 
         print("Plotting complete!")
