@@ -238,6 +238,8 @@ def plot_audio_with_stt_providers(
     ax_main.grid(True, which="minor", alpha=0.1, linestyle=":")
 
     # Add speaking events to main chart
+    speaking_start_plotted = False
+    speaking_stop_plotted = False
     if speaking_events and first_audio_time:
         for speaking_timestamp, is_speaking in speaking_events:
             # Convert timestamp difference to seconds
@@ -247,7 +249,32 @@ def plot_audio_with_stt_providers(
             if 0 <= time_offset <= duration_seconds:
                 # Use green for speaking start, orange for speaking stop
                 color = "green" if is_speaking else "orange"
-                ax_main.axvline(x=time_offset, color=color, alpha=0.8, linewidth=1.5)
+                label = None
+                
+                # Add labels for legend (only once per type)
+                if is_speaking and not speaking_start_plotted:
+                    label = "Speaking Start"
+                    speaking_start_plotted = True
+                elif not is_speaking and not speaking_stop_plotted:
+                    label = "Speaking Stop"
+                    speaking_stop_plotted = True
+                
+                ax_main.axvline(x=time_offset, color=color, alpha=0.8, linewidth=1.5, label=label)
+    
+    # Add legend to main chart including VAD shading
+    if speaking_events:
+        from matplotlib.patches import Patch
+        legend_elements = []
+        
+        # Add VAD shading patch
+        vad_patch = Patch(color='lightblue', alpha=0.2, label='VAD Speaking Periods')
+        legend_elements.append(vad_patch)
+        
+        # Add existing line elements
+        handles, labels = ax_main.get_legend_handles_labels()
+        legend_elements.extend(handles)
+        
+        ax_main.legend(handles=legend_elements, loc='upper right', fontsize=9)
 
     # Create subplot for each STT provider
     for i, (provider_name, (stt_timestamps, is_final_flags)) in enumerate(stt_data.items()):
@@ -276,6 +303,8 @@ def plot_audio_with_stt_providers(
         ax.grid(True, which="minor", alpha=0.1, linestyle=":")
 
         # Add vertical lines for STT timestamps
+        interim_plotted = False
+        final_plotted = False
         if stt_timestamps and first_audio_time:
             for stt_timestamp, is_final in zip(stt_timestamps, is_final_flags):
                 # Convert timestamp difference to seconds
@@ -285,7 +314,21 @@ def plot_audio_with_stt_providers(
                 if 0 <= time_offset <= duration_seconds:
                     # Use purple for final transcripts, red for interim
                     color = "purple" if is_final else "red"
-                    ax.axvline(x=time_offset, color=color, alpha=0.7, linewidth=2)
+                    label = None
+                    
+                    # Add labels for legend (only once per type)
+                    if is_final and not final_plotted:
+                        label = "Final Transcript"
+                        final_plotted = True
+                    elif not is_final and not interim_plotted:
+                        label = "Interim Transcript"
+                        interim_plotted = True
+                    
+                    ax.axvline(x=time_offset, color=color, alpha=0.7, linewidth=2, label=label)
+        
+        # Add legend to STT provider chart
+        if stt_timestamps:
+            ax.legend(loc='upper right', fontsize=8)
 
     # Set x-label only on the bottom subplot
     axes[-1].set_xlabel("Time (seconds)")
