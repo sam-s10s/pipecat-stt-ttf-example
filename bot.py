@@ -1,3 +1,4 @@
+import asyncio
 import os
 from datetime import datetime, timedelta
 
@@ -7,6 +8,7 @@ from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADAnalyzer
 from pipecat.frames.frames import (
+    AudioRawFrame,
     Frame,
     InterimTranscriptionFrame,
     TranscriptionFrame,
@@ -32,8 +34,15 @@ from pipecat.services.speechmatics.stt import (
     SpeechmaticsSTTService,
 )
 from pipecat.transports.base_transport import BaseTransport, TransportParams
+from pipecat.utils.smx import SMXLogger
 
 load_dotenv(override=True)
+
+# logger.remove(0)
+# logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}", level=logging.DEBUG)
+# logging.getLogger("speechmatics.voice").setLevel(logging.DEBUG)
+
+os.environ["SMX_LOG_PATH"] = "./output/test"
 
 
 class TranscriptionMetricsLogger(FrameProcessor):
@@ -81,6 +90,20 @@ class TranscriptionMetricsLogger(FrameProcessor):
         await self.push_frame(frame, direction)
 
 
+class AudioLogger(FrameProcessor):
+    def __init__(self):
+        super().__init__()
+        self._smx_logger = SMXLogger("audio")
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+
+        if isinstance(frame, AudioRawFrame):
+            self._smx_logger.log_json(frame.audio)
+
+        await self.push_frame(frame, direction)
+
+
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     async with aiohttp.ClientSession() as session:
         stt_deepgram = DeepgramSTTService(
@@ -90,18 +113,22 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         stt_speechmatics = SpeechmaticsSTTService(
             api_key=os.getenv("SPEECHMATICS_API_KEY"),
             params=SpeechmaticsSTTService.InputParams(
-                max_delay=3.0,
+                max_delay=4.0,
                 end_of_utterance_silence_trigger=0.5,
-                end_of_utterance_mode=EndOfUtteranceMode.FIXED,
+                end_of_utterance_mode=EndOfUtteranceMode.ADAPTIVE,
                 operating_point=OperatingPoint.ENHANCED,
             ),
+            audio_passthrough=True,
         )
+
+        audiologger = AudioLogger()
 
         rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
 
         pipeline = Pipeline(
             [
                 transport.input(),
+                audiologger,
                 rtvi,
                 ParallelPipeline(
                     [
