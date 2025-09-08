@@ -9,14 +9,18 @@ cp env.example .env
 # put in your API key(s)
 ```
 
-Start the bot. Then send an audio file. `send-audio-file.py` accepts a `--file` argument, which defaults to `test.m4a`.
+If you are using local copies of Pipecat and the SMX Voice SDK, you need to install them as editable dependencies before running the bot.
 
-```python
+```bash
 # install editable LOCAL dependencies (optional)
 uv add --editable "../../../speechmatics-python-sdk/sdk/voice"
 uv add --editable "../../pipecat"
 uv add --editable "../../pipecat[webrtc,deepgram,speechmatics,silero,runner]"
+```
 
+Start the bot. Then send an audio file. `send-audio-file.py` accepts a `--file` argument, which defaults to `test.m4a`.
+
+```python
 # in terminal 1
 uv run bot.py
 
