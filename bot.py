@@ -27,7 +27,11 @@ from pipecat.processors.frameworks.rtvi import (
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
 from pipecat.services.deepgram.stt import DeepgramSTTService
-from pipecat.services.speechmatics.stt import SpeechmaticsSTTService
+from pipecat.services.speechmatics.stt import (
+    EndOfUtteranceMode,
+    OperatingPoint,
+    SpeechmaticsSTTService,
+)
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 
 load_dotenv(override=True)
@@ -86,9 +90,13 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
         stt_speechmatics = SpeechmaticsSTTService(
             api_key=os.getenv("SPEECHMATICS_API_KEY"),
+            params=SpeechmaticsSTTService.InputParams(
+                max_delay=3.0,
+                end_of_utterance_silence_trigger=0.5,
+                # end_of_utterance_mode=EndOfUtteranceMode.ADAPTIVE,
+                operating_point=OperatingPoint.STANDARD,
+            ),
         )
-
-        stt = stt_speechmatics
 
         rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
 
@@ -100,7 +108,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                     [
                         Pipeline(
                             [
-                                stt,
+                                stt_speechmatics,
                                 TranscriptionMetricsLogger(
                                     rtvi, transport._params.vad_analyzer, "🚀"
                                 ),
@@ -110,7 +118,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                     [
                         Pipeline(
                             [
-                                stt,
+                                stt_deepgram,
                                 TranscriptionMetricsLogger(
                                     rtvi, transport._params.vad_analyzer, "🦊"
                                 ),

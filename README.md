@@ -12,6 +12,11 @@ cp env.example .env
 Start the bot. Then send an audio file. `send-audio-file.py` accepts a `--file` argument, which defaults to `test.m4a`.
 
 ```python
+# install editable LOCAL dependencies (optional)
+uv add --editable "../../../speechmatics-python-sdk/sdk/voice"
+uv add --editable "../../pipecat"
+uv add --editable "../../pipecat[webrtc,deepgram,speechmatics,silero,runner]"
+
 # in terminal 1
 uv run bot.py
 
@@ -22,4 +27,3 @@ uv run send-audio-file.py
 The time-to-final-transcript metric is the time it took for the STT service to return a final transcript after the user stopped speaking event fires.
 
 The bot logs transcription frames and a time-to-final-transcript metric. The bot also sends the time-to-final-transcript metric as an RTVI server message frame.
-
