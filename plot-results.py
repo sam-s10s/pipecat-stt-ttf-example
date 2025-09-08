@@ -17,8 +17,9 @@ from pathlib import Path
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
-import numpy as np
 import matplotlib.ticker as ticker
+import numpy as np
+
 
 def load_audio_data(jsonl_path: str) -> Tuple[List[datetime], np.ndarray]:
     """
@@ -106,36 +107,40 @@ def find_stt_files(folder_path: Path) -> List[str]:
 def load_speaking_events(jsonl_path: str) -> List[Tuple[datetime, bool]]:
     """
     Load speaking start/stop events from speaking.jsonl file.
-    
+
     Args:
         jsonl_path: Path to the speaking.jsonl file
-        
+
     Returns:
         List of (timestamp, is_speaking) tuples
     """
     speaking_events = []
-    
+
     if not os.path.exists(jsonl_path):
         return speaking_events
-    
+
     with open(jsonl_path, "r") as f:
         for line in f:
             data = json.loads(line.strip())
-            
+
             # Parse timestamp and speaking state
             ts = datetime.fromisoformat(data["ts"].replace("Z", "+00:00"))
             is_speaking = data.get("payload", {}).get("speaking", False)
-            
+
             speaking_events.append((ts, is_speaking))
-    
+
     return speaking_events
 
 
-def add_vad_shading(ax, speaking_events: List[Tuple[datetime, bool]], 
-                   first_audio_time: datetime, duration_seconds: float):
+def add_vad_shading(
+    ax,
+    speaking_events: List[Tuple[datetime, bool]],
+    first_audio_time: datetime,
+    duration_seconds: float,
+):
     """
     Add light blue background shading for VAD (speaking) periods.
-    
+
     Args:
         ax: Matplotlib axis to add shading to
         speaking_events: List of (timestamp, is_speaking) tuples
@@ -144,12 +149,12 @@ def add_vad_shading(ax, speaking_events: List[Tuple[datetime, bool]],
     """
     if not speaking_events:
         return
-    
+
     speaking_start = None
-    
+
     for speaking_timestamp, is_speaking in speaking_events:
         time_offset = (speaking_timestamp - first_audio_time).total_seconds()
-        
+
         # Only process events within audio duration
         if 0 <= time_offset <= duration_seconds:
             if is_speaking and speaking_start is None:
@@ -157,12 +162,12 @@ def add_vad_shading(ax, speaking_events: List[Tuple[datetime, bool]],
                 speaking_start = time_offset
             elif not is_speaking and speaking_start is not None:
                 # End of speaking period - add shading
-                ax.axvspan(speaking_start, time_offset, alpha=0.2, color='lightblue', zorder=0)
+                ax.axvspan(speaking_start, time_offset, alpha=0.2, color="lightblue", zorder=0)
                 speaking_start = None
-    
+
     # Handle case where speaking continues to end of audio
     if speaking_start is not None:
-        ax.axvspan(speaking_start, duration_seconds, alpha=0.2, color='lightblue', zorder=0)
+        ax.axvspan(speaking_start, duration_seconds, alpha=0.2, color="lightblue", zorder=0)
 
 
 def plot_audio_with_stt_providers(
@@ -209,14 +214,14 @@ def plot_audio_with_stt_providers(
 
     # Main waveform plot
     ax_main = axes[0]
-    
+
     # Calculate relative time offset from first audio timestamp
     first_audio_time = timestamps[0] if timestamps else None
-    
+
     # Add VAD shading first (behind everything)
     if speaking_events and first_audio_time:
         add_vad_shading(ax_main, speaking_events, first_audio_time, duration_seconds)
-    
+
     # Add audio waveform on top of shading
     ax_main.plot(time_axis, audio_float, linewidth=0.5, color="blue", alpha=0.7)
     ax_main.set_title(f"STT Comparison - {output_folder}", fontsize=14, fontweight="bold")
@@ -231,13 +236,13 @@ def plot_audio_with_stt_providers(
     ax_main.xaxis.set_minor_locator(ticker.MultipleLocator(1))  # Minor ticks every 1 second
     ax_main.grid(True, which="major", alpha=0.3)
     ax_main.grid(True, which="minor", alpha=0.1, linestyle=":")
-    
+
     # Add speaking events to main chart
     if speaking_events and first_audio_time:
         for speaking_timestamp, is_speaking in speaking_events:
             # Convert timestamp difference to seconds
             time_offset = (speaking_timestamp - first_audio_time).total_seconds()
-            
+
             # Only plot if within the audio duration
             if 0 <= time_offset <= duration_seconds:
                 # Use green for speaking start, orange for speaking stop
@@ -258,9 +263,9 @@ def plot_audio_with_stt_providers(
         # Set up the subplot
         ax.set_xlim(0, duration_seconds)
         ax.set_ylim(-0.5, 0.5)  # Slightly larger than audio range for visibility
-        
+
         # Remove 'stt_' prefix from display name
-        display_name = provider_name.replace('stt_', '').title()
+        display_name = provider_name.replace("stt_", "").title()
         ax.set_ylabel(f"{display_name}\nTranscripts")
         ax.set_yticklabels([])  # Remove y-axis tick labels
 
@@ -344,11 +349,11 @@ def main():
         if not stt_data:
             print("No STT data with transcripts found")
             return 1
-        
+
         # Load speaking events
         speaking_path = folder_path / "speaking.jsonl"
         speaking_events = load_speaking_events(str(speaking_path))
-        
+
         if speaking_events:
             print(f"Loaded {len(speaking_events)} speaking events")
         else:

@@ -29,6 +29,7 @@ from pipecat.processors.frameworks.rtvi import (
 )
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
+from pipecat.services.assemblyai.stt import AssemblyAISTTService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.speechmatics.stt import (
     EndOfUtteranceMode,
@@ -167,10 +168,6 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                 for file in os.listdir(smx_log_path):
                     os.remove(os.path.join(smx_log_path, file))
 
-        stt_deepgram = DeepgramSTTService(
-            api_key=os.getenv("DEEPGRAM_API_KEY"),
-        )
-
         stt_speechmatics = SpeechmaticsSTTService(
             api_key=os.getenv("SPEECHMATICS_API_KEY"),
             params=SpeechmaticsSTTService.InputParams(
@@ -179,7 +176,14 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                 end_of_utterance_mode=EndOfUtteranceMode.FIXED,
                 operating_point=OperatingPoint.ENHANCED,
             ),
-            audio_passthrough=True,
+        )
+
+        stt_deepgram = DeepgramSTTService(
+            api_key=os.getenv("DEEPGRAM_API_KEY"),
+        )
+
+        stt_assemblyai = AssemblyAISTTService(
+            api_key=os.getenv("ASSEMBLYAI_API_KEY"),
         )
 
         audio_logger = AudioLogger()
@@ -210,6 +214,16 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                                 stt_deepgram,
                                 TranscriptionMetricsLogger(
                                     rtvi, transport._params.vad_analyzer, "🦊", "stt_deepgram"
+                                ),
+                            ]
+                        )
+                    ],
+                    [
+                        Pipeline(
+                            [
+                                stt_assemblyai,
+                                TranscriptionMetricsLogger(
+                                    rtvi, transport._params.vad_analyzer, "🧤", "stt_assemblyai"
                                 ),
                             ]
                         )
