@@ -13,6 +13,7 @@ from pipecat.frames.frames import (
     Frame,
     InterimTranscriptionFrame,
     TranscriptionFrame,
+    UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
 )
 from pipecat.pipeline.parallel_pipeline import ParallelPipeline
@@ -127,6 +128,23 @@ class TranscriptionMetricsLogger(FrameProcessor):
         await self.push_frame(frame, direction)
 
 
+class SpeakingStartStopLogger(FrameProcessor):
+    def __init__(self):
+        super().__init__()
+        self._smx_logger = SMXLogger("speaking")
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+
+        if isinstance(frame, UserStoppedSpeakingFrame):
+            self._smx_logger.log_json({"speaking": False})
+
+        elif isinstance(frame, UserStartedSpeakingFrame):
+            self._smx_logger.log_json({"speaking": True})
+
+        await self.push_frame(frame, direction)
+
+
 class AudioLogger(FrameProcessor):
     def __init__(self):
         super().__init__()
@@ -143,13 +161,11 @@ class AudioLogger(FrameProcessor):
 
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     async with aiohttp.ClientSession() as session:
-
         if os.getenv("SMX_LOG_PATH"):
             smx_log_path = os.getenv("SMX_LOG_PATH")
             if os.path.exists(smx_log_path):
                 for file in os.listdir(smx_log_path):
                     os.remove(os.path.join(smx_log_path, file))
-        
 
         stt_deepgram = DeepgramSTTService(
             api_key=os.getenv("DEEPGRAM_API_KEY"),
@@ -160,20 +176,22 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             params=SpeechmaticsSTTService.InputParams(
                 max_delay=4.0,
                 end_of_utterance_silence_trigger=0.5,
-                end_of_utterance_mode=EndOfUtteranceMode.ADAPTIVE,
+                end_of_utterance_mode=EndOfUtteranceMode.FIXED,
                 operating_point=OperatingPoint.ENHANCED,
             ),
             audio_passthrough=True,
         )
 
-        audiologger = AudioLogger()
+        audio_logger = AudioLogger()
+        speaking_logger = SpeakingStartStopLogger()
 
         rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
 
         pipeline = Pipeline(
             [
                 transport.input(),
-                audiologger,
+                audio_logger,
+                speaking_logger,
                 rtvi,
                 ParallelPipeline(
                     [
@@ -181,7 +199,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                             [
                                 stt_speechmatics,
                                 TranscriptionMetricsLogger(
-                                    rtvi, transport._params.vad_analyzer, "🚀", "speechmatics"
+                                    rtvi, transport._params.vad_analyzer, "🚀", "stt_speechmatics"
                                 ),
                             ]
                         )
@@ -191,7 +209,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                             [
                                 stt_deepgram,
                                 TranscriptionMetricsLogger(
-                                    rtvi, transport._params.vad_analyzer, "🦊", "deepgram"
+                                    rtvi, transport._params.vad_analyzer, "🦊", "stt_deepgram"
                                 ),
                             ]
                         )

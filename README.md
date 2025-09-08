@@ -36,5 +36,5 @@ The bot also logs the audio frames to SMX.
 
 ```bash
 # view results
-uv run plot_results.py output/test --sample-rate 16000
+uv run plot-results.py output/test --sample-rate 16000
 ```
