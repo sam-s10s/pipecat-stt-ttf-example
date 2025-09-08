@@ -92,8 +92,8 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             params=SpeechmaticsSTTService.InputParams(
                 max_delay=3.0,
                 end_of_utterance_silence_trigger=0.5,
-                # end_of_utterance_mode=EndOfUtteranceMode.ADAPTIVE,
-                operating_point=OperatingPoint.STANDARD,
+                end_of_utterance_mode=EndOfUtteranceMode.FIXED,
+                operating_point=OperatingPoint.ENHANCED,
             ),
         )
 
