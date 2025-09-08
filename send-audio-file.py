@@ -149,8 +149,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--file",
-        default="test.m4a",
-        help="Audio file to stream (default: test.m4a)",
+        default="test.wav",
+        help="Audio file to stream (default: test.wav)",
     )
     parser.add_argument(
         "--no-data-channel",

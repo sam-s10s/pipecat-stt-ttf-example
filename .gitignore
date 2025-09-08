@@ -3,3 +3,4 @@
 logs
 *.egg-info
 uv.lock
+*.pkf
