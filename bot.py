@@ -13,6 +13,7 @@ from pipecat.frames.frames import (
     TranscriptionFrame,
     UserStoppedSpeakingFrame,
 )
+from pipecat.pipeline.parallel_pipeline import ParallelPipeline
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -33,12 +34,13 @@ load_dotenv(override=True)
 
 
 class TranscriptionMetricsLogger(FrameProcessor):
-    def __init__(self, rtvi: RTVIProcessor, vad_analyzer: VADAnalyzer):
+    def __init__(self, rtvi: RTVIProcessor, vad_analyzer: VADAnalyzer, prefix: str = None):
         super().__init__()
         self._last_final_time = None
         self._last_user_stopped_speaking_time = None
         self._rtvi = rtvi
         self._vad_analyzer = vad_analyzer
+        self._prefix = prefix
 
     async def maybe_emit_metrics(self):
         if self._last_user_stopped_speaking_time and self._last_final_time:
@@ -47,7 +49,7 @@ class TranscriptionMetricsLogger(FrameProcessor):
             self._last_user_stopped_speaking_time = None
             self._last_final_time = None
 
-            logger.info(f"[TTF] {elapsed_seconds_str}s")
+            logger.info(f"[{self._prefix} TTF] {elapsed_seconds_str}s")
             await self._rtvi.push_frame(
                 RTVIServerMessageFrame(
                     data={
@@ -66,10 +68,10 @@ class TranscriptionMetricsLogger(FrameProcessor):
             )
 
         elif isinstance(frame, InterimTranscriptionFrame):
-            logger.info(f"[interim] {frame.text}")
+            logger.info(f"[{self._prefix} interim] {frame.text}")
 
         elif isinstance(frame, TranscriptionFrame):
-            logger.info(f"[final] {frame.text}")
+            logger.info(f"[{self._prefix} final] {frame.text}")
             self._last_final_time = datetime.now()
 
         await self.maybe_emit_metrics()
@@ -94,8 +96,28 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             [
                 transport.input(),
                 rtvi,
-                stt,
-                TranscriptionMetricsLogger(rtvi, transport._params.vad_analyzer),
+                ParallelPipeline(
+                    [
+                        Pipeline(
+                            [
+                                stt,
+                                TranscriptionMetricsLogger(
+                                    rtvi, transport._params.vad_analyzer, "🚀"
+                                ),
+                            ]
+                        )
+                    ],
+                    [
+                        Pipeline(
+                            [
+                                stt,
+                                TranscriptionMetricsLogger(
+                                    rtvi, transport._params.vad_analyzer, "🦊"
+                                ),
+                            ]
+                        )
+                    ],
+                ),
                 transport.output(),
             ]
         )
