@@ -1,8 +1,9 @@
-import asyncio
+import json
 import os
 from datetime import datetime, timedelta
 
 import aiohttp
+import numpy as np
 from dotenv import load_dotenv
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -34,7 +35,6 @@ from pipecat.services.speechmatics.stt import (
     SpeechmaticsSTTService,
 )
 from pipecat.transports.base_transport import BaseTransport, TransportParams
-from pipecat.utils.smx import SMXLogger
 
 load_dotenv(override=True)
 
@@ -45,14 +45,47 @@ load_dotenv(override=True)
 os.environ["SMX_LOG_PATH"] = "./output/test"
 
 
+class SMXLogger:
+    """SMX logger."""
+
+    def __init__(self, name: str):
+        """Initialize the SMX logger."""
+        self._path = os.getenv("SMX_LOG_PATH", "./output")
+        self._name = name
+
+        self._full_path = os.path.join(self._path, self._name + ".jsonl")
+
+        if not os.path.exists(self._path):
+            os.makedirs(self._path)
+
+    def log_json(self, data):
+        """Log a JSON object to the console."""
+        if hasattr(data, "to_dict"):
+            data = data.to_dict()
+        elif isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                pass
+        elif isinstance(data, bytes):
+            data = np.frombuffer(data, dtype=np.int16).tolist()
+        with open(self._full_path, "a") as f:
+            f.write(json.dumps({"ts": datetime.now().isoformat(), "payload": data}) + "\n")
+
+
 class TranscriptionMetricsLogger(FrameProcessor):
-    def __init__(self, rtvi: RTVIProcessor, vad_analyzer: VADAnalyzer, prefix: str = None):
+    def __init__(
+        self, rtvi: RTVIProcessor, vad_analyzer: VADAnalyzer, prefix: str = None, log: str = None
+    ):
         super().__init__()
         self._last_final_time = None
         self._last_user_stopped_speaking_time = None
         self._rtvi = rtvi
         self._vad_analyzer = vad_analyzer
         self._prefix = prefix
+
+        if log:
+            self._log = SMXLogger(log)
 
     async def maybe_emit_metrics(self):
         if self._last_user_stopped_speaking_time and self._last_final_time:
@@ -81,9 +114,13 @@ class TranscriptionMetricsLogger(FrameProcessor):
 
         elif isinstance(frame, InterimTranscriptionFrame):
             logger.info(f"[{self._prefix} interim] {frame.text}")
+            if self._log:
+                self._log.log_json({"final": False, "text": frame.text})
 
         elif isinstance(frame, TranscriptionFrame):
             logger.info(f"[{self._prefix} final] {frame.text}")
+            if self._log:
+                self._log.log_json({"final": True, "text": frame.text})
             self._last_final_time = datetime.now()
 
         await self.maybe_emit_metrics()
@@ -106,6 +143,14 @@ class AudioLogger(FrameProcessor):
 
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     async with aiohttp.ClientSession() as session:
+
+        if os.getenv("SMX_LOG_PATH"):
+            smx_log_path = os.getenv("SMX_LOG_PATH")
+            if os.path.exists(smx_log_path):
+                for file in os.listdir(smx_log_path):
+                    os.remove(os.path.join(smx_log_path, file))
+        
+
         stt_deepgram = DeepgramSTTService(
             api_key=os.getenv("DEEPGRAM_API_KEY"),
         )
@@ -136,7 +181,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                             [
                                 stt_speechmatics,
                                 TranscriptionMetricsLogger(
-                                    rtvi, transport._params.vad_analyzer, "🚀"
+                                    rtvi, transport._params.vad_analyzer, "🚀", "speechmatics"
                                 ),
                             ]
                         )
@@ -146,7 +191,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                             [
                                 stt_deepgram,
                                 TranscriptionMetricsLogger(
-                                    rtvi, transport._params.vad_analyzer, "🦊"
+                                    rtvi, transport._params.vad_analyzer, "🦊", "deepgram"
                                 ),
                             ]
                         )

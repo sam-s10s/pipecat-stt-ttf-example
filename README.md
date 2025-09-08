@@ -31,3 +31,10 @@ uv run send-audio-file.py
 The time-to-final-transcript metric is the time it took for the STT service to return a final transcript after the user stopped speaking event fires.
 
 The bot logs transcription frames and a time-to-final-transcript metric. The bot also sends the time-to-final-transcript metric as an RTVI server message frame.
+
+The bot also logs the audio frames to SMX.
+
+```bash
+# view results
+uv run plot_results.py output/test --sample-rate 16000
+```
