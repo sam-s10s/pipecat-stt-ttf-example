@@ -84,7 +84,9 @@ async def stream_file(host: str, file_path: str, data_channel_label: Optional[st
         @channel.on("message")
         def on_message(message) -> None:  # type: ignore[no-redef]
             try:
-                text = message.decode("utf-8") if isinstance(message, (bytes, bytearray)) else message
+                text = (
+                    message.decode("utf-8") if isinstance(message, (bytes, bytearray)) else message
+                )
             except Exception:
                 text = str(message)
             logger.info(f"RTVI: {text}")
