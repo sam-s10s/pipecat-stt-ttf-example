@@ -196,7 +196,7 @@ def plot_audio_with_stt_providers(
     total_subplots = 1 + num_stt_providers
 
     # Create height ratios (main plot gets more space)
-    height_ratios = [3] + [1] * num_stt_providers
+    height_ratios = [2] + [1] * num_stt_providers
 
     # Create the plot with subplots
     fig, axes = plt.subplots(
