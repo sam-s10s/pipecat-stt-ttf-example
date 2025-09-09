@@ -177,6 +177,7 @@ def plot_audio_with_stt_providers(
     stt_data: dict,
     speaking_events: List[Tuple[datetime, bool]] = None,
     sample_rate: int = 16000,
+    args=None,
 ):
     """
     Plot the audio waveform with STT provider timestamp markers.
@@ -336,9 +337,10 @@ def plot_audio_with_stt_providers(
 
     plt.tight_layout()
 
-    # Save the plot
-    plt.savefig(args.output, dpi=300, bbox_inches="tight")
-    print(f"Plot saved as: {args.output}")
+    # Save the plot to the same folder as input data
+    output_path = Path(output_folder) / args.output
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    print(f"Plot saved as: {output_path}")
 
     # Show the plot
     plt.show()
@@ -346,7 +348,6 @@ def plot_audio_with_stt_providers(
 
 def main():
     parser = argparse.ArgumentParser(description="Plot audio data from JSONL files")
-    parser.add_argument("folder", help="Folder containing audio.jsonl file (e.g., output/test)")
     parser.add_argument(
         "--sample-rate", type=int, default=16000, help="Audio sample rate (default: 16000)"
     )
@@ -359,8 +360,9 @@ def main():
 
     args = parser.parse_args()
 
-    # Construct path to audio.jsonl
-    folder_path = Path(args.folder)
+    # Get output directory from environment variable
+    output_dir = os.getenv("OUTPUT_DIR", "./output/default")
+    folder_path = Path(output_dir)
     jsonl_path = folder_path / "audio.jsonl"
 
     if not jsonl_path.exists():
@@ -412,7 +414,7 @@ def main():
         plot_audio_with_stt_providers(
             timestamps,
             audio_samples,
-            args.folder,
+            output_dir,
             stt_data,
             speaking_events,
             args.sample_rate,

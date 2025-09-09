@@ -45,7 +45,7 @@ load_dotenv(override=True)
 # logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}", level=logging.DEBUG)
 # logging.getLogger("speechmatics.voice").setLevel(logging.DEBUG)
 
-os.environ["SMX_LOG_PATH"] = "./output/test"
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "./output/default")
 
 
 class SMXLogger:
@@ -53,7 +53,7 @@ class SMXLogger:
 
     def __init__(self, name: str):
         """Initialize the SMX logger."""
-        self._path = os.getenv("SMX_LOG_PATH", "./output")
+        self._path = os.path.join(OUTPUT_DIR, name)
         self._name = name
 
         self._full_path = os.path.join(self._path, self._name + ".jsonl")
@@ -164,7 +164,7 @@ class AudioLogger(FrameProcessor):
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     async with aiohttp.ClientSession() as session:
         if os.getenv("SMX_LOG_PATH"):
-            smx_log_path = os.getenv("SMX_LOG_PATH")
+            smx_log_path = OUTPUT_DIR
             if os.path.exists(smx_log_path):
                 for file in os.listdir(smx_log_path):
                     os.remove(os.path.join(smx_log_path, file))
@@ -176,6 +176,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                 end_of_utterance_silence_trigger=0.5,
                 end_of_utterance_mode=EndOfUtteranceMode.ADAPTIVE,
                 operating_point=OperatingPoint.ENHANCED,
+                enable_vad=True,
             ),
         )
 

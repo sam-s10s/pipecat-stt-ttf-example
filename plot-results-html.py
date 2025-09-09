@@ -785,7 +785,6 @@ def generate_stt_chart_js(stt_data: Dict[str, List[Dict[str, Any]]], duration: f
 
 def main():
     parser = argparse.ArgumentParser(description="Create interactive HTML charts from JSONL files")
-    parser.add_argument("folder", help="Folder containing audio.jsonl file (e.g., output/test)")
     parser.add_argument(
         "--sample-rate", type=int, default=16000, help="Audio sample rate (default: 16000)"
     )
@@ -798,8 +797,9 @@ def main():
 
     args = parser.parse_args()
 
-    # Set up paths
-    folder_path = Path(args.folder)
+    # Get output directory from environment variable
+    output_dir = os.getenv("OUTPUT_DIR", "./output/default")
+    folder_path = Path(output_dir)
     html_folder = folder_path
     jsonl_path = folder_path / "audio.jsonl"
 
@@ -856,7 +856,7 @@ def main():
         )
 
         # Create HTML page
-        create_html_page(chart_data, args.folder, html_folder, audio_file, args.output)
+        create_html_page(chart_data, output_dir, html_folder, audio_file, args.output)
 
         print("Interactive HTML visualization complete!")
         return 0
