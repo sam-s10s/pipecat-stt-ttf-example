@@ -51,7 +51,7 @@ def load_audio_data(jsonl_path: str) -> Tuple[List[datetime], np.ndarray]:
     return timestamps, audio_samples
 
 
-def load_stt_timestamps(jsonl_path: str) -> Tuple[List[datetime], List[bool]]:
+def load_stt_timestamps(jsonl_path: str) -> Tuple[List[datetime], List[str]]:
     """
     Load timestamps from an STT JSONL file, filtering out empty transcripts.
 
@@ -59,13 +59,13 @@ def load_stt_timestamps(jsonl_path: str) -> Tuple[List[datetime], List[bool]]:
         jsonl_path: Path to the STT .jsonl file
 
     Returns:
-        Tuple of (timestamps, is_final_flags) for entries with non-empty transcripts
+        Tuple of (timestamps, types) for entries with non-empty transcripts
     """
     timestamps = []
-    is_final_flags = []
+    types = []
 
     if not os.path.exists(jsonl_path):
-        return timestamps, is_final_flags
+        return timestamps, types
 
     with open(jsonl_path, "r") as f:
         for line in f:
@@ -79,11 +79,11 @@ def load_stt_timestamps(jsonl_path: str) -> Tuple[List[datetime], List[bool]]:
                 ts = datetime.fromisoformat(data["ts"].replace("Z", "+00:00"))
                 timestamps.append(ts)
 
-                # Check if it's final
-                is_final = data.get("payload", {}).get("final", False)
-                is_final_flags.append(is_final)
+                # Get the type (interim, final, or turn)
+                transcript_type = data.get("payload", {}).get("type", "interim")
+                types.append(transcript_type)
 
-    return timestamps, is_final_flags
+    return timestamps, types
 
 
 def find_stt_files(folder_path: Path) -> List[str]:
@@ -186,7 +186,7 @@ def plot_audio_with_stt_providers(
         timestamps: List of timestamps for each audio chunk
         audio_samples: Concatenated audio samples
         output_folder: Folder name for the plot title
-        stt_data: Dict mapping provider names to (timestamps, is_final_flags) tuples
+        stt_data: Dict mapping provider names to (timestamps, types) tuples
         speaking_events: List of (timestamp, is_speaking) tuples for VAD shading
         sample_rate: Audio sample rate (default 16000 Hz)
     """
@@ -279,7 +279,7 @@ def plot_audio_with_stt_providers(
         ax_main.legend(handles=legend_elements, loc="upper right", fontsize=9)
 
     # Create subplot for each STT provider
-    for i, (provider_name, (stt_timestamps, is_final_flags)) in enumerate(stt_data.items()):
+    for i, (provider_name, (stt_timestamps, types)) in enumerate(stt_data.items()):
         ax = axes[i + 1]
 
         # Add VAD shading first (behind everything)
@@ -308,25 +308,23 @@ def plot_audio_with_stt_providers(
         interim_plotted = False
         final_plotted = False
         if stt_timestamps and first_audio_time:
-            for stt_timestamp, is_final in zip(stt_timestamps, is_final_flags):
+            for stt_timestamp, transcript_type in zip(stt_timestamps, types):
                 # Convert timestamp difference to seconds
                 time_offset = (stt_timestamp - first_audio_time).total_seconds()
 
                 # Only plot if within the audio duration
                 if 0 <= time_offset <= duration_seconds:
-                    # Use purple for final transcripts, red for interim
-                    color = "purple" if is_final else "red"
-                    label = None
-
-                    # Add labels for legend (only once per type)
-                    if is_final and not final_plotted:
-                        label = "Final Transcript"
+                    # Use different colours for different types
+                    if transcript_type == "final":
+                        color = "purple"
+                        label = "Final Transcript" if not final_plotted else None
+                        ax.axvline(x=time_offset, color=color, alpha=0.7, linewidth=2, label=label)
                         final_plotted = True
-                    elif not is_final and not interim_plotted:
-                        label = "Interim Transcript"
+                    elif transcript_type == "interim":
+                        color = "red"
+                        label = "Interim Transcript" if not interim_plotted else None
+                        ax.axvline(x=time_offset, color=color, alpha=0.7, linewidth=1, label=label)
                         interim_plotted = True
-
-                    ax.axvline(x=time_offset, color=color, alpha=0.7, linewidth=2, label=label)
 
         # Add legend to STT provider chart
         if stt_timestamps:
@@ -343,7 +341,7 @@ def plot_audio_with_stt_providers(
     print(f"Plot saved as: {output_path}")
 
     # Show the plot
-    plt.show()
+    # plt.show()
 
 
 def main():

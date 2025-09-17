@@ -70,9 +70,9 @@ def load_stt_timestamps(jsonl_path: str) -> List[Dict[str, Any]]:
             if text.strip():  # Only include non-empty transcripts
                 # Parse timestamp
                 ts = datetime.fromisoformat(data["ts"].replace("Z", "+00:00"))
-                is_final = data.get("payload", {}).get("final", False)
+                transcript_type = data.get("payload", {}).get("type", "interim")
 
-                events.append({"timestamp": ts, "text": text.strip(), "is_final": is_final})
+                events.append({"timestamp": ts, "text": text.strip(), "type": transcript_type})
 
     return events
 
@@ -231,7 +231,7 @@ def prepare_chart_data(
             time_offset = (event["timestamp"] - first_audio_time).total_seconds()
             if 0 <= time_offset <= duration_seconds:
                 provider_events.append(
-                    {"x": time_offset, "text": event["text"], "is_final": event["is_final"]}
+                    {"x": time_offset, "text": event["text"], "type": event["type"]}
                 )
 
         display_name = provider.replace("stt_", "").upper()
@@ -614,11 +614,20 @@ def create_html_page(
                     canvas.parentElement.appendChild(chart.transcriptOverlay);
                 }}
                 
-                const transcriptType = transcript.is_final ? 'Final' : 'Interim';
-                const color = transcript.is_final ? '#8b5cf6' : '#ef4444';
+                let transcriptType, color;
+                if (transcript.type === 'final') {{
+                    transcriptType = 'Final';
+                    color = '#8b5cf6';
+                }} else if (transcript.type === 'turn') {{
+                    transcriptType = 'Turn';
+                    color = '#8B4513';
+                }} else {{
+                    transcriptType = 'Interim';
+                    color = '#ef4444';
+                }}
                 chart.transcriptOverlay.innerHTML = `
-                    <div style="color: ${{color}}; font-weight: bold; margin-bottom: 4px;">${{transcriptType}}</div>
-                    <div>"${{transcript.text}}"</div>
+                    <div style="color: ` + color + `; font-weight: bold; margin-bottom: 4px;">` + transcriptType + `</div>
+                    <div>"` + transcript.text + `"</div>
                 `;
                 chart.transcriptOverlay.style.display = 'block';
             }}
@@ -674,16 +683,19 @@ def generate_stt_chart_js(stt_data: Dict[str, List[Dict[str, Any]]], duration: f
     for provider, events in stt_data.items():
         chart_id = f"stt{provider.lower()}Chart"
 
-        # Prepare datasets for interim and final transcripts
+        # Prepare datasets for interim, final, and turn transcripts
         interim_data = []
         final_data = []
+        turn_data = []
 
         for event in events:
             point = {"x": event["x"], "y": 0, "text": event["text"], "timestamp": event["x"]}
 
-            if event["is_final"]:
+            if event["type"] == "final":
                 final_data.append(point)
-            else:
+            elif event["type"] == "turn":
+                turn_data.append(point)
+            else:  # interim
                 interim_data.append(point)
 
         js_code.append(f"""
@@ -707,6 +719,14 @@ def generate_stt_chart_js(stt_data: Dict[str, List[Dict[str, Any]]], duration: f
                         backgroundColor: 'purple',
                         borderColor: 'purple',
                         pointRadius: 5,
+                        showLine: false
+                    }},
+                    {{
+                        label: 'Turn',
+                        data: {json.dumps(turn_data)},
+                        backgroundColor: '#8B4513',
+                        borderColor: '#8B4513',
+                        pointRadius: 4,
                         showLine: false
                     }}
                 ]

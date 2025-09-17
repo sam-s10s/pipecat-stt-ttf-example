@@ -21,6 +21,9 @@ uv add --editable "../../pipecat[webrtc,deepgram,speechmatics,silero,runner]"
 Start the bot. Then send an audio file. `send-audio-file.py` accepts a `--file` argument, which defaults to `test.m4a`.
 
 ```bash
+# set the output directory
+export OUTPUT_DIR="./output/test"
+
 # in terminal 1
 uv run bot.py
 
@@ -35,6 +38,9 @@ The bot logs transcription frames and a time-to-final-transcript metric. The bot
 The bot also logs the audio frames to SMX.
 
 ```bash
+# set the output directory to use
+export OUTPUT_DIR="./output/test"
+
 # view results
 uv run plot-results.py output/test
 uv run plot-results-html.py output/test
