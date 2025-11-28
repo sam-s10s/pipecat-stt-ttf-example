@@ -2,7 +2,7 @@
 name = "stt-timing"
 version = "0.1.0"
 description = "wip"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "speechmatics-voice",
     "pipecat-ai[assemblyai,cartesia,deepgram,runner,silero,speechmatics,webrtc]",
@@ -26,3 +26,9 @@ select = ["I"]
 [tool.uv.sources]
 speechmatics-voice = { path = "../../../speechmatics-python-sdk/sdk/voice", editable = true }
 pipecat-ai = { path = "../../pipecat", editable = true }
+
+[tool.uv]
+override-dependencies = [
+    "speechmatics-voice[smart]>=0.0.0",
+    "pipecat-ai[assemblyai,cartesia,deepgram,runner,silero,speechmatics,webrtc]>=0.0.0",
+]

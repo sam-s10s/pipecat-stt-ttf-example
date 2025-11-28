@@ -34,7 +34,6 @@ from pipecat.runner.utils import create_transport
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.speechmatics.stt import (
     EndOfUtteranceMode,
-    OperatingPoint,
     SpeechmaticsSTTService,
 )
 from pipecat.transports.base_transport import BaseTransport, TransportParams
@@ -119,11 +118,12 @@ class TranscriptionMetricsLogger(FrameProcessor):
         await super().process_frame(frame, direction)
 
         if isinstance(frame, UserStartedSpeakingFrame):
-            if self._log:
-                result = " ".join(self._buffer)
-                if result:
-                    self._log.log_json({"type": "turn", "text": result})
-            self._buffer = []
+            pass
+            # if self._log:
+            #     result = " ".join(self._buffer)
+            #     if result:
+            #         self._log.log_json({"type": "turn", "text": result})
+            # self._buffer = []
 
         elif isinstance(frame, UserStoppedSpeakingFrame):
             if self._vad_analyzer:
@@ -202,8 +202,17 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
             for file in os.listdir(OUTPUT_DIR):
                 os.remove(os.path.join(OUTPUT_DIR, file))
 
+        _mode = EndOfUtteranceMode.FIXED
+        _vad = False
+        _snaffle = True
+        _preview = True
+        _url = "wss://eu-west-2-research.speechmatics.cloud/v2"
+        _diarization = True
+        _max_delay = 0.7
+        _end_of_utterance_silence_trigger = 1.0
+
         audio_logger = AudioLogger()
-        speaking_logger = SpeakingStartStopLogger(snaffle=False)
+        speaking_logger = SpeakingStartStopLogger(snaffle=_snaffle)
 
         rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
 
@@ -219,66 +228,100 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
                             [
                                 SpeechmaticsSTTService(
                                     api_key=os.getenv("SPEECHMATICS_API_KEY"),
+                                    base_url=_url,
                                     params=SpeechmaticsSTTService.InputParams(
-                                        operating_point=OperatingPoint.STANDARD,
-                                        max_delay=0.7,
-                                        end_of_utterance_silence_trigger=0.2,
-                                        end_of_utterance_mode=EndOfUtteranceMode.FIXED,
-                                        enable_vad=False,
-                                        enable_diarization=False,
+                                        # max_delay=_max_delay,
+                                        # end_of_utterance_silence_trigger=_end_of_utterance_silence_trigger,
+                                        # end_of_utterance_mode=_mode,
+                                        enable_vad=_vad,
+                                        # enable_preview_features=_preview,
+                                        # enable_diarization=_diarization,
+                                        # focus_speakers=["S2"],
+                                        # focus_mode=SpeakerFocusMode.IGNORE,
+                                        # include_partials=False,
+                                        preset="conversation_fixed",
                                     ),
                                 ),
                                 TranscriptionMetricsLogger(
                                     rtvi,
                                     transport._params.vad_analyzer,
                                     "🚀",
-                                    "stt_smx_fast",
+                                    "stt_smx",
                                 ),
                             ]
                         )
                     ],
-                    [
-                        Pipeline(
-                            [
-                                SpeechmaticsSTTService(
-                                    api_key=os.getenv("SPEECHMATICS_API_KEY"),
-                                    params=SpeechmaticsSTTService.InputParams(
-                                        max_delay=1.5,
-                                        end_of_utterance_silence_trigger=0.5,
-                                        end_of_utterance_mode=EndOfUtteranceMode.FIXED,
-                                        enable_vad=False,
-                                    ),
-                                ),
-                                TranscriptionMetricsLogger(
-                                    rtvi,
-                                    transport._params.vad_analyzer,
-                                    "🚀",
-                                    "stt_smx_agent",
-                                ),
-                            ]
-                        )
-                    ],
-                    [
-                        Pipeline(
-                            [
-                                SpeechmaticsSTTService(
-                                    api_key=os.getenv("SPEECHMATICS_API_KEY"),
-                                    params=SpeechmaticsSTTService.InputParams(
-                                        max_delay=1.5,
-                                        end_of_utterance_silence_trigger=0.4,
-                                        end_of_utterance_mode=EndOfUtteranceMode.EXTERNAL,
-                                        enable_vad=True,
-                                    ),
-                                ),
-                                TranscriptionMetricsLogger(
-                                    rtvi,
-                                    transport._params.vad_analyzer,
-                                    "🚀",
-                                    "stt_smx_captions",
-                                ),
-                            ]
-                        )
-                    ],
+                    # [
+                    #     Pipeline(
+                    #         [
+                    #             SpeechmaticsSTTService(
+                    #                 api_key=os.getenv("SPEECHMATICS_API_KEY"),
+                    #                 base_url=_url,
+                    #                 params=SpeechmaticsSTTService.InputParams(
+                    #                     operating_point=OperatingPoint.STANDARD,
+                    #                     max_delay=0.7,
+                    #                     end_of_utterance_silence_trigger=0.2,
+                    #                     end_of_utterance_mode=_mode,
+                    #                     enable_vad=_vad,
+                    #                     enable_diarization=False,
+                    #                     enable_preview_features=_preview,
+                    #                 ),
+                    #             ),
+                    #             TranscriptionMetricsLogger(
+                    #                 rtvi,
+                    #                 transport._params.vad_analyzer,
+                    #                 "🚀",
+                    #                 "stt_smx_1_fast",
+                    #             ),
+                    #         ]
+                    #     )
+                    # ],
+                    # [
+                    #     Pipeline(
+                    #         [
+                    #             SpeechmaticsSTTService(
+                    #                 api_key=os.getenv("SPEECHMATICS_API_KEY"),
+                    #                 base_url=_url,
+                    #                 params=SpeechmaticsSTTService.InputParams(
+                    #                     max_delay=1.0,
+                    #                     end_of_utterance_silence_trigger=0.35,
+                    #                     end_of_utterance_mode=_mode,
+                    #                     enable_vad=_vad,
+                    #                     enable_preview_features=_preview,
+                    #                 ),
+                    #             ),
+                    #             TranscriptionMetricsLogger(
+                    #                 rtvi,
+                    #                 transport._params.vad_analyzer,
+                    #                 "🚀",
+                    #                 "stt_smx_2_agent",
+                    #             ),
+                    #         ]
+                    #     )
+                    # ],
+                    # [
+                    #     Pipeline(
+                    #         [
+                    #             SpeechmaticsSTTService(
+                    #                 api_key=os.getenv("SPEECHMATICS_API_KEY"),
+                    #                 base_url=_url,
+                    #                 params=SpeechmaticsSTTService.InputParams(
+                    #                     max_delay=1.5,
+                    #                     end_of_utterance_silence_trigger=1.25,
+                    #                     end_of_utterance_mode=_mode,
+                    #                     enable_vad=_vad,
+                    #                     enable_preview_features=_preview,
+                    #                 ),
+                    #             ),
+                    #             TranscriptionMetricsLogger(
+                    #                 rtvi,
+                    #                 transport._params.vad_analyzer,
+                    #                 "🚀",
+                    #                 "stt_smx_3_captions",
+                    #             ),
+                    #         ]
+                    #     )
+                    # ],
                     [
                         Pipeline(
                             [
